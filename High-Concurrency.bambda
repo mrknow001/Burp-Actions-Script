@@ -1,0 +1,20 @@
+id: 28ebd14e-39d9-4d23-b37a-d95400edf9ad
+name: High-Concurrency
+function: CUSTOM_ACTION
+location: REPEATER
+source: |-
+  int NUMBER_OF_REQUESTS = 50;
+  var reqs = new ArrayList<HttpRequest>();
+  for (int i = 0; i < NUMBER_OF_REQUESTS; i++)
+  {
+    reqs.add(requestResponse.request());
+  }
+  var responses = api().http().sendRequests(reqs);
+  logging().logToOutput("num\tstatus\tlength\n");
+  for (int i = 0; i < responses.size(); i++)
+    	{
+        	var res_status = responses.get(i).statusCode();
+        	var res_len = String.valueOf(responses.get(i).response().body()).length();
+        	// 输出控制台
+           logging().logToOutput(String.valueOf(i) + "\t" + res_status + "\t" + res_len);
+    	};
