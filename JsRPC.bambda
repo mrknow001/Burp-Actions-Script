@@ -1,0 +1,50 @@
+id: 13c5d5e1-e255-4777-b724-acdda067966b
+name: JsRPC
+function: CUSTOM_ACTION
+location: REPEATER
+source: |-
+  var select_data = selection.requestSelection();
+  var req = requestResponse.request();
+
+  // 没有选择直接退出
+  if (select_data.contents().length() < 1){
+      	logging().logToOutput("error: select is null");
+      	return;
+      };
+
+  logging().logToOutput("Original: "+select_data.contents());
+
+  // 2. 获取选中位置 [start, end]
+  int start = select_data.offsets().startIndexInclusive();
+  int end = select_data.offsets().endIndexExclusive();
+
+  // 启动jsrpc如果group跟action有更改的话，只需要改这里
+  String url = "http://127.0.0.1:12080/go";
+  String group = "zzz";
+  String action = "encrypt";
+
+  String body = "group="+group+"&action="+action+"&param="+select_data.contents();
+  HttpRequest request = HttpRequest.httpRequestFromUrl(url).withMethod("POST").withBody(body).withHeader("Content-Type","application/x-www-form-urlencoded");
+  var res = api().http().sendRequest(request);
+
+  // 获取加密内容
+  String responseBody = res.response().body().toString();
+  String dataKey = "\"data\":\"";
+  int startIdx = responseBody.indexOf(dataKey) + dataKey.length();
+  int endIdx = responseBody.indexOf("\"", startIdx);
+  String dataValue = responseBody.substring(startIdx, endIdx);
+
+  logging().logToOutput("Encrypt: "+dataValue);
+
+  // 获取 ByteArray 并转换为 byte[]
+  ByteArray originalByteArray = req.toByteArray();
+  byte[] originalRequest = originalByteArray.getBytes();
+  // 获取响应体字节数组（确保是 byte[]）
+  byte[] replacement = dataValue.getBytes();
+  // 使用 System.arraycopy
+  byte[] newRequest = new byte[start + replacement.length + (originalRequest.length - end)];
+  System.arraycopy(originalRequest, 0, newRequest, 0, start);
+  System.arraycopy(replacement, 0, newRequest, start, replacement.length);
+  System.arraycopy(originalRequest, end, newRequest, start + replacement.length, originalRequest.length - end);
+
+  httpEditor.requestPane().set(new String(newRequest));
